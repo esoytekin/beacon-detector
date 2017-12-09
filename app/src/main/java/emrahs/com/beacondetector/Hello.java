@@ -260,7 +260,7 @@ public class Hello extends AppCompatActivity implements BeaconConsumer {
                         matches_text) {
                     try {
                         int elem = Integer.parseInt(m);
-                        CharSequence y = elem + " lira ?";
+                        CharSequence y = "Hesabınızdan " + elem + " lira çekilecek. Onaylıyorsanız evet, onaylamiyorsaniz hayir?";
                         approveWithdraw(y);
                         return;
                     } catch(Exception e) {
