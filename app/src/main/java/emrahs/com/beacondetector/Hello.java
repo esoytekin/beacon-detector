@@ -3,6 +3,7 @@ package emrahs.com.beacondetector;
 import android.accounts.Account;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.drawable.Drawable;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Bundle;
@@ -11,6 +12,7 @@ import android.os.RemoteException;
 import android.os.Vibrator;
 import android.speech.RecognizerIntent;
 import android.speech.tts.TextToSpeech;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.ArrayMap;
 import android.util.Log;
@@ -52,14 +54,12 @@ import retrofit2.Response;
 public class Hello extends AppCompatActivity implements BeaconConsumer {
     public static final String TAG = "BeaconsEverywhere";
     private BeaconManager beaconManager;
-//    String uuid="A9D05B20-6431-4E41-B572-416E198CCC73";
     String uuid="11111111-1111-1111-1111-111111111111";
 
     Vibrator v ;
 
     TextView txtDistance;
-    Button btnStart;
-    Button btnStop;
+    private Button btnStart;
     Region region;
 
     public static final String ALTBEACON = "m:2-3=beac,i:4-19,i:20-21,i:22-23,p:24-24,d:25-25";
@@ -85,7 +85,6 @@ public class Hello extends AppCompatActivity implements BeaconConsumer {
 
 
         btnStart = (Button) findViewById(R.id.btnStart);
-        btnStop = (Button) findViewById(R.id.btnStop);
 
         setupBeaconManager();
 
@@ -100,16 +99,10 @@ public class Hello extends AppCompatActivity implements BeaconConsumer {
         btnStart.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                setupBeaconManager();
+                buttonClick();
             }
         });
 
-        btnStop.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                unsetBeaconManager();
-            }
-        });
 
 
         textToSpeech = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
@@ -125,6 +118,18 @@ public class Hello extends AppCompatActivity implements BeaconConsumer {
 
         service = new OAuthService();
 
+    }
+
+    private void buttonClick() {
+        if (currentStatus == Status.STOPPED) {
+            setupBeaconManager();
+            Drawable d = ContextCompat.getDrawable(getApplicationContext(), R.drawable.on);
+            btnStart.setBackgroundResource(R.drawable.on);
+        } else {
+            unsetBeaconManager();
+            Drawable d = ContextCompat.getDrawable(getApplicationContext(), R.drawable.off);
+            btnStart.setBackgroundResource(R.drawable.off);
+        }
     }
 
     private void setupBeaconManager()
@@ -175,16 +180,6 @@ public class Hello extends AppCompatActivity implements BeaconConsumer {
             spHandler.postDelayed(this, 1000);
 
             txtDistance.setText(currentStatus.getLabel());
-
-            if (currentStatus == Status.STARTED) {
-                btnStop.setEnabled(true);
-                btnStart.setEnabled(false);
-
-            } else if (currentStatus == Status.STOPPED) {
-                btnStop.setEnabled(false);
-                btnStart.setEnabled(true);
-
-            }
 
         }
     };
@@ -241,13 +236,6 @@ public class Hello extends AppCompatActivity implements BeaconConsumer {
             unsetBeaconManager();
             CharSequence cs = "Lütfen çekmek istediğiniz tutarı söyleyiniz.";
             recognizeSpeech(cs);
-//            try {
-//                beaconManager.stopRangingBeaconsInRegion(region);
-//            } catch (RemoteException e) {
-//                e.printStackTrace();
-//            }
-            //you are close enough
-            // cekmek istediginiz tutari soyleyiniz
 
         }
         Log.d(TAG, acc.getLabel());
@@ -338,7 +326,6 @@ public class Hello extends AppCompatActivity implements BeaconConsumer {
 
     }
     private void recognizeSpeech(CharSequence cs) {
-//        String cs = "Lütfen çekmek istediğiniz tutarı söyleyiniz.";
         textToSpeech.speak(cs,TextToSpeech.QUEUE_FLUSH,null,null);
 
         while(true) {
@@ -376,7 +363,6 @@ public class Hello extends AppCompatActivity implements BeaconConsumer {
         try {
 
             Call<ResponseForAccountList> a =  service1.getInstance(context).getAccountList(body);
-//            Call<ResponseForAccountList> a = service1.getInstance(context).getAccountList(body);
             a.clone().enqueue(new Callback<ResponseForAccountList>() {
                 @Override
                 public void onResponse(Call<ResponseForAccountList> call, Response<ResponseForAccountList> response) {
@@ -428,13 +414,4 @@ public class Hello extends AppCompatActivity implements BeaconConsumer {
 
     }
 
-//    public void onInit(int status) {
-//        if(status == TextToSpeech.SUCCESS) {
-//            textToSpeech.setOnUtteranceCompletedListener(this);
-//        }
-//    }
-//
-//    public void onUtteranceCompleted(String utteranceId) {
-//        Log.i(TAG, utteranceId); //utteranceId == "SOME MESSAGE"
-//    }
 }
