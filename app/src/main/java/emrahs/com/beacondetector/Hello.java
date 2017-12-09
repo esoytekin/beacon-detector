@@ -55,7 +55,7 @@ public class Hello extends AppCompatActivity implements BeaconConsumer {
     public static final String EDDYSTONE_URL = "s:0-1=feaa,m:2-2=10,p:3-3:-41,i:4-20v";
     public static final String IBEACON = "m:2-3=0215,i:4-19,i:20-21,i:22-23,p:24-24";
 
-    private String global_distance = "";
+    private String lblInfoLabel = "";
 
     private Handler spHandler;
     private static final int REQUEST_CODE = 1234;
@@ -79,15 +79,20 @@ public class Hello extends AppCompatActivity implements BeaconConsumer {
         beaconManager.getBeaconParsers().add(new BeaconParser().setBeaconLayout(EDDYSTONE_URL));
         beaconManager.getBeaconParsers().add(new BeaconParser().setBeaconLayout(IBEACON));
 
-        beaconManager.bind(this);
+        beaconManager.setForegroundScanPeriod(5000l);
+        beaconManager.setBackgroundScanPeriod(5000l);
+        beaconManager.setForegroundBetweenScanPeriod(1100l);
+        beaconManager.setBackgroundBetweenScanPeriod(1100l);
+
+        btnStart = (Button) findViewById(R.id.btnStart);
+        btnStop = (Button) findViewById(R.id.btnStop);
+
+        setupBeaconManager();
 
         v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
 
         txtDistance = (TextView) findViewById(R.id.txtDistance);
-        btnStart = (Button) findViewById(R.id.btnStart);
-        btnStop = (Button) findViewById(R.id.btnStop);
 
-        global_distance = "waiting...";
 
         spHandler = new Handler();
         spHandler.postDelayed(updateLabel, 0);
@@ -95,28 +100,14 @@ public class Hello extends AppCompatActivity implements BeaconConsumer {
         btnStart.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (beaconManager.checkAvailability() ){
-                    try {
-                        beaconManager.startMonitoringBeaconsInRegion(region);
-                        beaconManager.updateScanPeriods();
-                        global_distance="started..";
-                    } catch (RemoteException e) {
-                        e.printStackTrace();
-                    }
-
-                }
+                setupBeaconManager();
             }
         });
 
         btnStop.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                try {
-                    beaconManager.stopRangingBeaconsInRegion(region);
-                    global_distance = "stopped..";
-                } catch (RemoteException e) {
-                    e.printStackTrace();
-                }
+                unsetBeaconManager();
             }
         });
 
@@ -130,7 +121,32 @@ public class Hello extends AppCompatActivity implements BeaconConsumer {
             }
         });
 
+        region = new Region("mybeacon", Identifier.parse(uuid), null, null);
 
+    }
+
+    private void setupBeaconManager()
+    {
+        if (!beaconManager.isBound(this))
+            beaconManager.bind(this);
+        lblInfoLabel ="Started";
+    }
+
+    private void unsetBeaconManager()
+    {
+        if (beaconManager.isBound(this))
+        {
+            try
+            {
+                beaconManager.stopRangingBeaconsInRegion(new Region("apr", null, null, null));
+                beaconManager.unbind(this);
+            }
+            catch (RemoteException e)
+            {
+                Log.i(TAG, "RemoteException = "+e.toString());
+            }
+        }
+        lblInfoLabel ="Stopped";
     }
 
     final Runnable updateLabel = new Runnable() {
@@ -139,7 +155,17 @@ public class Hello extends AppCompatActivity implements BeaconConsumer {
 
             spHandler.postDelayed(this, 1000);
 
-            txtDistance.setText(global_distance);
+            txtDistance.setText(lblInfoLabel);
+
+            if (lblInfoLabel.toLowerCase().equals("started")) {
+                btnStop.setEnabled(true);
+                btnStart.setEnabled(false);
+
+            } else if (lblInfoLabel.toLowerCase().equals("stopped")) {
+                btnStop.setEnabled(false);
+                btnStart.setEnabled(true);
+
+            }
 
         }
     };
@@ -147,94 +173,65 @@ public class Hello extends AppCompatActivity implements BeaconConsumer {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        beaconManager.unbind(this);
+        unsetBeaconManager();
     }
-
 
     @Override
     public void onBeaconServiceConnect() {
-        region = new Region("myBeaons", Identifier.parse(uuid), null, null);
-
-        beaconManager.setMonitorNotifier(new MonitorNotifier() {
-            @Override
-            public void didEnterRegion(Region region) {
-                try {
-                    Log.d(TAG, "didEnterRegion");
-                    global_distance = "start";
-                    beaconManager.startRangingBeaconsInRegion(region);
-                } catch (RemoteException e) {
-                    e.printStackTrace();
-                }
-            }
-
-            @Override
-            public void didExitRegion(Region region) {
-                try {
-                    Log.d(TAG, "didExitRegion");
-                    global_distance="exit";
-                    beaconManager.stopRangingBeaconsInRegion(region);
-                } catch (RemoteException e) {
-                    e.printStackTrace();
-                }
-            }
-
-            @Override
-            public void didDetermineStateForRegion(int i, Region region) {
-
-            }
-        });
-
         beaconManager.setRangeNotifier(new RangeNotifier() {
-
             @Override
             public void didRangeBeaconsInRegion(Collection<Beacon> beacons, Region region) {
-                /*
-
-                for(Beacon oneBeacon : beacons) {
-                    Log.d(TAG, "distance: " + oneBeacon.getDistance() + " id:" + oneBeacon.getId1() + "/" + oneBeacon.getId2() + "/" + oneBeacon.getId3());
-                }
-                */
-
-                Iterator iterator = beacons.iterator();
-                if (iterator.hasNext()) {
-                    Beacon beacon = beacons.iterator().next();
-
-                    double distance = beacon.getDistance();
-                    Identifier id = beacon.getId1();
-                    String acc = BeaconUtil.getDistance(distance);
-                    global_distance = acc;
-
-                    if (acc.equals(BeaconUtil.FAR)) {
-                        v.vibrate(100);
-                    } else if (acc.equals(BeaconUtil.NEAR)) {
-                        v.vibrate(700);
-                    } else if (acc.equals(BeaconUtil.CLOSE)) {
-                        v.vibrate(1000);
-                    } else {
-                        try {
-                            beaconManager.stopRangingBeaconsInRegion(region);
-                            CharSequence cs = "L";
-                            recognizeSpeech(cs);
-                        } catch (RemoteException e) {
-                            e.printStackTrace();
-                        }
-                        //you are close enough
-                        // cekmek istediginiz tutari soyleyiniz
+                Log.i(TAG,"didRangeBeaconsInRegion, number of beacons detected = "+beacons.size());
+                for (Beacon beacon :
+                        beacons) {
+                    Log.i(TAG, "didRangeBeaconsInRegion, " + beacon.getId1());
+                    if (beacon.getId1().toString().equals(uuid)) {
+                        Log.d(TAG,"processing beacon: " + beacon);
+                        prosessBeacon(beacon);
 
                     }
-                    Log.d(TAG, acc);
                 }
-
-
             }
+
         });
-
-        try {
-            beaconManager.startMonitoringBeaconsInRegion(region);
-        } catch (RemoteException e) {
-            e.printStackTrace();
+        try
+        {
+            beaconManager.startRangingBeaconsInRegion(new Region("apr", null, null, null));
         }
+        catch (RemoteException e)
+        {
+            Log.i(TAG, "RemoteException = "+e.toString());
+        }
+    }
 
+
+    private void prosessBeacon(Beacon beacon) {
+        double distance = beacon.getDistance();
+        Identifier id = beacon.getId1();
+        String acc = BeaconUtil.getDistance(distance);
+        lblInfoLabel = acc;
+
+        if (acc.equals(BeaconUtil.FAR)) {
+            v.vibrate(100);
+        } else if (acc.equals(BeaconUtil.NEAR)) {
+            v.vibrate(700);
+        } else if (acc.equals(BeaconUtil.CLOSE)) {
+            v.vibrate(1000);
+        } else {
+            Log.d(TAG,"starting transaction request!");
+            unsetBeaconManager();
+            CharSequence cs = "Lütfen çekmek istediğiniz tutarı söyleyiniz.";
+            recognizeSpeech(cs);
+//            try {
+//                beaconManager.stopRangingBeaconsInRegion(region);
+//            } catch (RemoteException e) {
+//                e.printStackTrace();
+//            }
+            //you are close enough
+            // cekmek istediginiz tutari soyleyiniz
+
+        }
+        Log.d(TAG, acc);
     }
 
     private void updateLabel(String msg) {
@@ -257,24 +254,25 @@ public class Hello extends AppCompatActivity implements BeaconConsumer {
             final ArrayList<String> matches_text = data
                     .getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
 
-            String match = matches_text.get(0);
 
             if (requestCode == REQUEST_CODE) {
-                try {
-                    int elem = Integer.parseInt(match);
-
-                    CharSequence y = elem + " lira ?";
-                    approveWithdraw(y);
-
-                } catch(Exception e) {
-                    e.printStackTrace();
-                    CharSequence x = "Anlaşılamadı, tekrar deneyin";
-                    recognizeSpeech(x);
-
+                for (String m :
+                        matches_text) {
+                    try {
+                        int elem = Integer.parseInt(m);
+                        CharSequence y = elem + " lira ?";
+                        approveWithdraw(y);
+                        return;
+                    } catch(Exception e) {
+                        e.printStackTrace();
+                    }
 
                 }
+                CharSequence x = "Anlaşılamadı, lütfen tekrar deneyin.";
+                recognizeSpeech(x);
 
             } else if (requestCode == 123) {
+                String match = matches_text.get(0);
 
                 if (match.toLowerCase().equals("evet")) {
                     Log.d(TAG, "begin transaction");

@@ -13,13 +13,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 
-import com.pubnub.api.PNConfiguration;
-import com.pubnub.api.PubNub;
-import com.pubnub.api.PubNubException;
-import com.pubnub.api.callbacks.SubscribeCallback;
-import com.pubnub.api.models.consumer.PNStatus;
-import com.pubnub.api.models.consumer.pubsub.PNMessageResult;
-import com.pubnub.api.models.consumer.pubsub.PNPresenceEventResult;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -36,7 +29,6 @@ public class MainActivity extends AppCompatActivity {
     private String publishKey = "pub-c-3dcba17c-ad60-4be4-aa00-4842ab6bd8bd";
     private String subscribeKey = "sub-c-48b88996-dc82-11e7-87a3-b28930076838";
     private String secretKey = "sec-c-MTcxM2VkMjMtYzcwMS00ZTVkLWFkODYtYmZjMjZlOTljZTIx";
-    private PubNub pubNub;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,13 +40,6 @@ public class MainActivity extends AppCompatActivity {
             String[] permissions = new String[]{Manifest.permission.ACCESS_COARSE_LOCATION};
             PermissionUtils.requestPermissions(this, COARSE_LOCATIONPERMISSION_ID, permissions);
         }
-
-        PNConfiguration pnConfiguration = new PNConfiguration();
-        pnConfiguration.setPublishKey(publishKey);
-        pnConfiguration.setSubscribeKey(subscribeKey);
-        pnConfiguration.setSecure(false);
-        this.pubNub = new PubNub(pnConfiguration);
-
 
         BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
@@ -160,24 +145,6 @@ public class MainActivity extends AppCompatActivity {
 
     public void getAdOfTheDay(int major, int minor) {
         String channel = "YourCompany_"+major+"_"+minor;
-        this.pubNub.subscribe().channels(Arrays.asList("")).execute();
-        this.pubNub.addListener(new SubscribeCallback() {
-            @Override
-            public void status(PubNub pubnub, PNStatus status) {
-
-            }
-
-            @Override
-            public void message(PubNub pubnub, PNMessageResult message) {
-                System.out.println(message.getMessage());
-
-            }
-
-            @Override
-            public void presence(PubNub pubnub, PNPresenceEventResult presence) {
-
-            }
-        });
     }
 
     public String getMajor(long[] mScanRecord) {

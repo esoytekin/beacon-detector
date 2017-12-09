@@ -26,7 +26,6 @@ dependencies {
     })
     compile 'com.android.support:appcompat-v7:24.2.1'
     compile 'com.android.support.constraint:constraint-layout:1.0.2'
-    compile group: 'com.pubnub', name: 'pubnub-gson', version: '4.16.0'
     compile 'org.altbeacon:android-beacon-library:2.12.3'
 
 
