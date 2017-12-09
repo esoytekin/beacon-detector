@@ -1,5 +1,6 @@
 package emrahs.com.beacondetector;
 
+import android.accounts.Account;
 import android.content.Context;
 import android.content.Intent;
 import android.net.ConnectivityManager;
@@ -11,6 +12,7 @@ import android.os.Vibrator;
 import android.speech.RecognizerIntent;
 import android.speech.tts.TextToSpeech;
 import android.support.v7.app.AppCompatActivity;
+import android.util.ArrayMap;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -22,14 +24,26 @@ import org.altbeacon.beacon.BeaconConsumer;
 import org.altbeacon.beacon.BeaconManager;
 import org.altbeacon.beacon.BeaconParser;
 import org.altbeacon.beacon.Identifier;
-import org.altbeacon.beacon.MonitorNotifier;
 import org.altbeacon.beacon.RangeNotifier;
 import org.altbeacon.beacon.Region;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Iterator;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+
+import emrahs.com.beacondetector.api.APIUtil;
+import emrahs.com.beacondetector.api.ApiService;
+import emrahs.com.beacondetector.api.OAuthService;
+import emrahs.com.beacondetector.api.model.AccountDto;
+import emrahs.com.beacondetector.api.response.AccessTokenResponse;
+import emrahs.com.beacondetector.api.response.ResponseForAccountList;
+import okhttp3.RequestBody;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 /**
  * Created by emrahsoytekin on 9.12.2017.
@@ -55,34 +69,20 @@ public class Hello extends AppCompatActivity implements BeaconConsumer {
     public static final String EDDYSTONE_URL = "s:0-1=feaa,m:2-2=10,p:3-3:-41,i:4-20v";
     public static final String IBEACON = "m:2-3=0215,i:4-19,i:20-21,i:22-23,p:24-24";
 
-    private String lblInfoLabel = "";
+    private Status currentStatus =  Status.STOPPED;
 
     private Handler spHandler;
     private static final int REQUEST_CODE = 1234;
 
     private TextToSpeech textToSpeech;
 
+    private OAuthService service;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        beaconManager = BeaconManager.getInstanceForApplication(this);
-
-//        beaconManager.getBeaconParsers().add(new BeaconParser()
-//                .setBeaconLayout("m:2-3=0215,i:4-19,i:20-21,i:22-23,p:24-24,d:25-25"));
-        beaconManager.getBeaconParsers().add(new BeaconParser().setBeaconLayout(ALTBEACON));
-        beaconManager.getBeaconParsers().add(new BeaconParser().setBeaconLayout(ALTBEACON2));
-        beaconManager.getBeaconParsers().add(new BeaconParser().setBeaconLayout(EDDYSTONE_TLM));
-        beaconManager.getBeaconParsers().add(new BeaconParser().setBeaconLayout(EDDYSTONE_UID));
-        beaconManager.getBeaconParsers().add(new BeaconParser().setBeaconLayout(EDDYSTONE_URL));
-        beaconManager.getBeaconParsers().add(new BeaconParser().setBeaconLayout(IBEACON));
-
-        beaconManager.setForegroundScanPeriod(5000l);
-        beaconManager.setBackgroundScanPeriod(5000l);
-        beaconManager.setForegroundBetweenScanPeriod(1100l);
-        beaconManager.setBackgroundBetweenScanPeriod(1100l);
 
         btnStart = (Button) findViewById(R.id.btnStart);
         btnStop = (Button) findViewById(R.id.btnStop);
@@ -123,13 +123,31 @@ public class Hello extends AppCompatActivity implements BeaconConsumer {
 
         region = new Region("mybeacon", Identifier.parse(uuid), null, null);
 
+        service = new OAuthService();
+
     }
 
     private void setupBeaconManager()
     {
+        beaconManager = BeaconManager.getInstanceForApplication(this);
+
+        beaconManager.getBeaconParsers().add(new BeaconParser().setBeaconLayout(ALTBEACON));
+        beaconManager.getBeaconParsers().add(new BeaconParser().setBeaconLayout(ALTBEACON2));
+        beaconManager.getBeaconParsers().add(new BeaconParser().setBeaconLayout(EDDYSTONE_TLM));
+        beaconManager.getBeaconParsers().add(new BeaconParser().setBeaconLayout(EDDYSTONE_UID));
+        beaconManager.getBeaconParsers().add(new BeaconParser().setBeaconLayout(EDDYSTONE_URL));
+        beaconManager.getBeaconParsers().add(new BeaconParser().setBeaconLayout(IBEACON));
+
+        beaconManager.setForegroundScanPeriod(5000l);
+        beaconManager.setBackgroundScanPeriod(5000l);
+        beaconManager.setForegroundBetweenScanPeriod(1100l);
+        beaconManager.setBackgroundBetweenScanPeriod(1100l);
+
         if (!beaconManager.isBound(this))
             beaconManager.bind(this);
-        lblInfoLabel ="Started";
+
+        currentStatus = Status.STARTED;
+
     }
 
     private void unsetBeaconManager()
@@ -146,7 +164,8 @@ public class Hello extends AppCompatActivity implements BeaconConsumer {
                 Log.i(TAG, "RemoteException = "+e.toString());
             }
         }
-        lblInfoLabel ="Stopped";
+
+        currentStatus = Status.STOPPED;
     }
 
     final Runnable updateLabel = new Runnable() {
@@ -155,13 +174,13 @@ public class Hello extends AppCompatActivity implements BeaconConsumer {
 
             spHandler.postDelayed(this, 1000);
 
-            txtDistance.setText(lblInfoLabel);
+            txtDistance.setText(currentStatus.getLabel());
 
-            if (lblInfoLabel.toLowerCase().equals("started")) {
+            if (currentStatus == Status.STARTED) {
                 btnStop.setEnabled(true);
                 btnStart.setEnabled(false);
 
-            } else if (lblInfoLabel.toLowerCase().equals("stopped")) {
+            } else if (currentStatus == Status.STOPPED) {
                 btnStop.setEnabled(false);
                 btnStart.setEnabled(true);
 
@@ -208,14 +227,14 @@ public class Hello extends AppCompatActivity implements BeaconConsumer {
     private void prosessBeacon(Beacon beacon) {
         double distance = beacon.getDistance();
         Identifier id = beacon.getId1();
-        String acc = BeaconUtil.getDistance(distance);
-        lblInfoLabel = acc;
+        Status acc = BeaconUtil.getDistance(distance);
+        currentStatus = acc;
 
-        if (acc.equals(BeaconUtil.FAR)) {
+        if (acc == Status.FAR) {
             v.vibrate(100);
-        } else if (acc.equals(BeaconUtil.NEAR)) {
+        } else if (acc == Status.NEAR) {
             v.vibrate(700);
-        } else if (acc.equals(BeaconUtil.CLOSE)) {
+        } else if (acc == Status.CLOSE) {
             v.vibrate(1000);
         } else {
             Log.d(TAG,"starting transaction request!");
@@ -231,7 +250,7 @@ public class Hello extends AppCompatActivity implements BeaconConsumer {
             // cekmek istediginiz tutari soyleyiniz
 
         }
-        Log.d(TAG, acc);
+        Log.d(TAG, acc.getLabel());
     }
 
     private void updateLabel(String msg) {
@@ -272,10 +291,23 @@ public class Hello extends AppCompatActivity implements BeaconConsumer {
                 recognizeSpeech(x);
 
             } else if (requestCode == 123) {
-                String match = matches_text.get(0);
+                boolean match = false;
 
-                if (match.toLowerCase().equals("evet")) {
+                for (String m :
+                        matches_text) {
+                    if (m.toLowerCase().equals("evet")) {
+                        match = true;
+                        break;
+                    }
+                }
+
+                if (match) {
                     Log.d(TAG, "begin transaction");
+                    callWs();
+                    textToSpeech.speak("Makineden paranızı alabilirsiniz.",TextToSpeech.QUEUE_FLUSH,null,null);
+                } else {
+                    Log.w(TAG, "transaction cancelled");
+                    textToSpeech.speak("İşleminiz isteğiniz üzerine iptal edilmiştir.",TextToSpeech.QUEUE_FLUSH,null,null);
                 }
 
             }
@@ -323,6 +355,75 @@ public class Hello extends AppCompatActivity implements BeaconConsumer {
         }
         else{
             Toast.makeText(getApplicationContext(), "Please Connect to Internet", Toast.LENGTH_LONG).show();
+        }
+
+
+
+
+    }
+
+    public static void getAccountList(Context context) {
+        List<String> currencyList = new ArrayList<>();
+        currencyList.add("TL");
+        Map<String, Object> map = new ArrayMap<>();
+
+        //TODO: müşteri no yaz
+        map.put("customerNumber", "10000972");
+        map.put("includedCurrencyCode", currencyList);
+
+        RequestBody body = RequestBody.create(okhttp3.MediaType.parse("application/json; charset=utf-8"), (new JSONObject(map)).toString());
+        ApiService service1 = new ApiService();
+        try {
+
+            Call<ResponseForAccountList> a =  service1.getInstance(context).getAccountList(body);
+//            Call<ResponseForAccountList> a = service1.getInstance(context).getAccountList(body);
+            a.clone().enqueue(new Callback<ResponseForAccountList>() {
+                @Override
+                public void onResponse(Call<ResponseForAccountList> call, Response<ResponseForAccountList> response) {
+                    response.isSuccessful();
+                    List<AccountDto> list = response.body().getResponse().getRet().getAccountList();
+
+                    for (AccountDto acc :
+                            list) {
+                        Log.d(TAG, acc.toString());
+                    }
+
+                    //callback.onSuccess(list);
+                }
+
+                @Override
+                public void onFailure(Call<ResponseForAccountList> call, Throwable t) {
+                    String a = t.getMessage();
+                    System.console();
+                    // callback.onFail(t.getMessage());
+                }
+            });
+
+        } catch (Exception ex) {
+            System.out.println("Access Token : " + ex.getMessage());
+        }
+    }
+
+    private void callWs(){
+        try {
+            Call<AccessTokenResponse> call = service.getAccessToken(getApplicationContext()).getAccessToken(APIUtil.SCOPE, APIUtil.GRANT_TYPE, APIUtil.CLIENT_ID, APIUtil.CLIENT_SECRET);
+            call.clone().enqueue(new Callback<AccessTokenResponse>() {
+                @Override
+                public void onResponse(Call<AccessTokenResponse> call, Response<AccessTokenResponse> response) {
+                    APIUtil.ACCEESS_TOKEN = response.body().getAccess_token();
+                    getAccountList(getApplicationContext());
+
+                }
+
+                @Override
+                public void onFailure(Call<AccessTokenResponse> call, Throwable t) {
+                    String a = t.getMessage();
+                    Log.e(TAG,t.getMessage());
+                }
+            });
+
+        } catch (Exception ex) {
+            System.out.println("Access Token : " + ex.getMessage());
         }
 
     }

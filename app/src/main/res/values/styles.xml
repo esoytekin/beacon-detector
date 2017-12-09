@@ -8,4 +8,19 @@
         <item name="colorAccent">@color/colorAccent</item>
     </style>
 
+    <style name="CCCBaseTheme" parent="@android:style/Theme.Holo">
+        <item name="android:windowBackground">@color/colorAccent</item>
+        <item name="android:textColor">@color/text</item>
+
+        <item name="android:actionBarStyle">@style/CCCWidgetActionBar</item>
+
+    </style>
+
+    <style name="CCCWidgetActionBar"></style>
+
+    <style name="NoActionBar" parent="Theme.AppCompat.Light.DarkActionBar">
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
+
 </resources>

@@ -6,18 +6,35 @@
     android:layout_height="match_parent"
     tools:context="emrahs.com.beacondetector.Hello">
 
+    <ImageView
+        android:layout_width="0dp"
+        android:layout_height="600dp"
+        android:adjustViewBounds="false"
+        android:cropToPadding="false"
+        android:scaleType="centerCrop"
+        app:srcCompat="@drawable/dorlion_bg"
+        tools:layout_editor_absoluteX="0dp"
+        tools:layout_editor_absoluteY="0dp"
+        />
+
     <LinearLayout
         android:layout_width="368dp"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-
         tools:layout_editor_absoluteY="0dp"
         tools:layout_editor_absoluteX="8dp">
+        <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:srcCompat="@drawable/logo"
+            />
+
     <TextView
         android:id="@+id/txtDistance"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text=""
+        android:text="Started"
+        android:textColor="@color/text"
         android:textSize="36dp"
         android:layout_gravity="center"
         />
@@ -25,20 +42,26 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
+            android:orientation="horizontal"
             >
 
             <Button
                 android:id="@+id/btnStart"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Start" />
+                android:layout_width="wrap_content"
+                android:layout_height="100dp"
+                android:layout_weight=".5"
+                android:text="Start"
+                android:background="@color/button"
+                />
 
             <Button
                 android:id="@+id/btnStop"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Stop" />
+                android:layout_width="wrap_content"
+                android:layout_height="100dp"
+                android:layout_weight=".5"
+                android:text="Stop"
+                android:background="@color/button"
+                />
 
 
         </LinearLayout>

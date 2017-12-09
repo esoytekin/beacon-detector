@@ -6,24 +6,19 @@ package emrahs.com.beacondetector;
 
 public final class BeaconUtil {
 
-    public static String UNKNOWN = "Unknown";
-    public static String IMMEDIATE = "Immediate";
-    public static String CLOSE = "Very Close";
-    public static String NEAR = "Near";
-    public static String FAR = "Far";
 
 
-    public static String getDistance(double accuracy) {
+    public static Status getDistance(double accuracy) {
         if (accuracy == -1.0) {
-            return UNKNOWN;
+            return Status.UNKNOWN;
         } else if(accuracy < .3) {
-            return IMMEDIATE;
+            return Status.IMMEDIATE;
         }else if (accuracy < 1) {
-            return CLOSE;
+            return Status.CLOSE;
         } else if (accuracy < 3) {
-            return NEAR;
+            return Status.NEAR;
         } else {
-            return FAR;
+            return Status.FAR;
         }
     }
 }
